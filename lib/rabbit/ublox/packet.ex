@@ -6,7 +6,7 @@ defmodule Rabbit.Ublox.Packet do
             id: nil,
             payload: []
 
-  def p(class, id, payload) do
+  def p(class, id, payload \\ []) do
     %Packet{class: class, id: id, payload: payload}
   end
 
