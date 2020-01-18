@@ -4,6 +4,11 @@ defmodule Rabbit.GPS do
 
   @i2c_addr 0x42
 
+  def fetch do
+    {:ok, response} = I2C.read(get_ref, @i2c_addr, 200)
+    IO.inspect(response, width: :infinity)
+  end
+
   def get_version(ref) do
     data = Packet.encode(Packet.p(:mon, :ver, []))
     response_size = 160 + 9
@@ -96,13 +101,41 @@ defmodule Rabbit.GPS do
       Packet.p(:cfg, :msg, [0xF0,0x05,0x00,0x00,0x00,0x00,0x00,0x01]),
 
       # NAV-PVT ON
-      Packet.p(:cfg, :msg, [0x01,0x07,0x00,0x01,0x00,0x00,0x00,0x00]),
+      Packet.p(:cfg, :msg, [0x01,0x07,0x01]),
+
+      # Disable Unnecessary Channels?
+      Packet.p(:cfg, :gnss, [
+        0x00, # msgVer
+        0xFF, # numTrkChHw
+        0xFF, # numTrkChUse
+        0x04, # numConfigBlocks below ->
+
+        # gnssId, resTrkCh, maxTrkCh, reserved1,
+        # flags::4 bytes: <<_, sigCfgMask, ..... enable::1>>
+        #
+
+        # GPS, on set L2C
+        0x00, 0x10, 0xFF, 0x00,
+        0x01, 0x10, 0x00, 0x01,
+
+        # SBAS, on
+        0x01, 0x10, 0xFF, 0x00,
+        0x00, 0x01, 0x00, 0x01,
+
+        # QZSS, off
+        0x05, 0x00, 0x03, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+
+        # GLONASS, off
+        0x06, 0x08, 0xFF, 0x00,
+        0x00, 0x00, 0x00, 0x00
+      ]),
 
       # NAV-POSLLH ON
-      Packet.p(:cfg, :msg, [0x01,0x02,0x00,0x01,0x00,0x00,0x00,0x00]),
+      # Packet.p(:cfg, :msg, [0x01,0x02,0x00,0x01,0x00,0x00,0x00,0x00]),
 
       # Rate 10Hz
-      Packet.p(:cfg, :rate, [0x64,0x00,0x01,0x00,0x01,0x00]),
+      Packet.p(:cfg, :rate, [0x64,0x00,0x01,0x00,0x01,0x00])
     ]
 
     commands |> Enum.each(fn packet ->
@@ -119,11 +152,12 @@ defmodule Rabbit.GPS do
   end
 
   def get_pvt(ref) do
-    request = Packet.encode(Packet.p(:nav, :pvt, []))
+    # request = Packet.encode(Packet.p(:nav, :pvt, []))
     response_size = 92 + 9
     # response_size = 200
 
-    {:ok, response} = I2C.write_read(ref, @i2c_addr, request, response_size)
+    # {:ok, response} = I2C.write_read(ref, @i2c_addr, request, response_size)
+    {:ok, response} = I2C.read(ref, @i2c_addr, response_size)
 
     cleaned = response
       |> :binary.bin_to_list
@@ -142,8 +176,8 @@ defmodule Rabbit.GPS do
     })
 
     <<
-      itow::integer-size(32),
-      year::integer-size(16),
+      itow::little-integer-size(32),
+      year::little-integer-size(16),
 
       month,
       day,
@@ -188,8 +222,10 @@ defmodule Rabbit.GPS do
 
     <<
       crap::size(184),
-      longitude::signed-integer-size(32),
-      latitude::signed-integer-size(32),
+      longitude::little-signed-integer-size(32),
+      latitude::little-signed-integer-size(32),
+      h_accuracy::little-integer-size(32),
+      v_accuracy::little-integer-size(32),
       _::binary
     >> = payload
 
@@ -222,7 +258,13 @@ defmodule Rabbit.GPS do
       # 33, 117
       longitude: longitude / :math.pow(10, 7),
       latitude: latitude / :math.pow(10, 7),
+      h_accuracy: mm_to_foot(h_accuracy),
+      v_accuracy: mm_to_foot(v_accuracy)
     }
+  end
+
+  def mm_to_foot(mm) do
+    mm * 0.00328084
   end
 
   def get_ref() do
