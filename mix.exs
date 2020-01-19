@@ -64,7 +64,7 @@ defmodule Rabbit.MixProject do
       {:nerves_system_rpi4, "~> 1.8", runtime: false, targets: :rpi4},
       {:nerves_system_x86_64, "~> 1.8", runtime: false, targets: :x86_64},
 
-      # {:nerves_rpi4_rabbit, path: "../rpi4_rabbit", runtime: false, targets: :rpi4_rabbit},
+      {:rpi4_rabbit, path: "/home/michael/code/rpi4_rabbit", runtime: false, targets: :rpi4_rabbit},
     ]
   end
 
