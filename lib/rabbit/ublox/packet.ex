@@ -1,6 +1,8 @@
 defmodule Rabbit.Ublox.Packet do
   alias __MODULE__
+
   use Bitwise
+  alias Rabbit.Units
 
   defstruct class: nil,
             id: nil,
@@ -240,5 +242,89 @@ defmodule Rabbit.Ublox.Packet do
 
   def nav(attribute) when is_binary(attribute) do
     nav(String.to_atom(attribute))
+  end
+
+  # nav-pvt
+  def debug({:error, _} = data) do
+    data
+  end
+
+  def debug(%Packet{class: 0x01, id: 0x07 } = packet) do
+    <<
+      itow::little-little-integer-size(32),
+      year::little-little-integer-size(16),
+
+      month,
+      day,
+      hour,
+      min,
+      sec,
+
+      # # valid,
+      valid,
+
+      time_accuracy::little-integer-size(32),
+
+      nanoseconds::little-signed-integer-size(32),
+
+      # 0: no fix
+      # 1: dead reckoning only
+      # 2: 2D-fix
+      # 3: 3D-fix
+      # 4: GNSS + dead reckoning combined 5: time only fix
+      fix_type,
+
+      flags,
+      flags2,
+
+      satellites_used,
+
+      longitude::little-signed-integer-size(32),
+      latitude::little-signed-integer-size(32),
+      height::little-signed-integer-size(32),
+      height_above_sea_level::little-signed-integer-size(32),
+
+      horizontal_accuracy::little-integer-size(32),
+      vertical_accuracy::little-integer-size(32),
+
+      velocity_north::little-signed-integer-size(32),
+      velocity_east::little-signed-integer-size(32),
+      velocity_down::little-signed-integer-size(32),
+
+      ground_speed::little-signed-integer-size(32),
+      heading_of_motion::little-signed-integer-size(32),
+
+      speed_accuracy::little-integer-size(32),
+      heading_accuracy::little-integer-size(32),
+
+      _position_dop::16,
+      flags3,
+      _reserved::integer-size(40),
+
+      vehicle_heading::little-signed-integer-size(32),
+
+      x::binary
+    >> = packet.payload
+
+    %{
+      itow: itow,
+      year: year,
+      month: month,
+      day: day,
+      hour: hour,
+      min: min,
+      sec: sec,
+      valid: valid,
+      time_accuracy: time_accuracy,
+      satellites_used: satellites_used,
+      fix_type: fix_type,
+      longitude: longitude / :math.pow(10, 7),
+      latitude: latitude / :math.pow(10, 7),
+      height: Units.mm_to_foot(height),
+      height_above_sea_level: Units.mm_to_foot(height_above_sea_level),
+      horizontal_accuracy: Units.mm_to_foot(horizontal_accuracy),
+      vertical_accuracy: Units.mm_to_foot(vertical_accuracy),
+      ground_speed: Units.mm_to_foot(ground_speed),
+    }
   end
 end

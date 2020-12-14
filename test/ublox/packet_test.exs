@@ -114,27 +114,30 @@ defmodule PacketTest do
       x::binary
     >> = packet.payload
 
-    IO.inspect(%{
-      itow: itow,
-      year: year,
-      month: month,
-      day: day,
-      hour: hour,
-      min: min,
-      sec: sec,
-      valid: valid,
-      time_accuracy: time_accuracy,
-      satellites_used: satellites_used,
-      fix_type: fix_type,
-      longitude: longitude / :math.pow(10, 7),
-      latitude: latitude / :math.pow(10, 7),
-      height: Units.mm_to_foot(height),
-      height_above_sea_level: Units.mm_to_foot(height_above_sea_level),
-      horizontal_accuracy: Units.mm_to_foot(horizontal_accuracy),
-      vertical_accuracy: Units.mm_to_foot(vertical_accuracy),
-      ground_speed: Units.mm_to_foot(ground_speed),
-      # vehicle_heading: vehicle_heading,
-    })
+    packet
+      |> Packet.debug()
+      |> IO.inspect
+    # IO.inspect(%{
+    #   itow: itow,
+    #   year: year,
+    #   month: month,
+    #   day: day,
+    #   hour: hour,
+    #   min: min,
+    #   sec: sec,
+    #   valid: valid,
+    #   time_accuracy: time_accuracy,
+    #   satellites_used: satellites_used,
+    #   fix_type: fix_type,
+    #   longitude: longitude / :math.pow(10, 7),
+    #   latitude: latitude / :math.pow(10, 7),
+    #   height: Units.mm_to_foot(height),
+    #   height_above_sea_level: Units.mm_to_foot(height_above_sea_level),
+    #   horizontal_accuracy: Units.mm_to_foot(horizontal_accuracy),
+    #   vertical_accuracy: Units.mm_to_foot(vertical_accuracy),
+    #   ground_speed: Units.mm_to_foot(ground_speed),
+    #   # vehicle_heading: vehicle_heading,
+    # })
   end
 
 end

@@ -1,5 +1,5 @@
 defmodule Rabbit.GPS do
-  import Binary
+  alias Binary
   alias Rabbit.Ublox.Packet
   alias Circuits.I2C
 
@@ -18,6 +18,11 @@ defmodule Rabbit.GPS do
   # Added benefit is that this sink can essnetially just write
   # itself to a log endpoint somewhere like cloudwatch.
   #
+  def get_ref() do
+    {:ok, ref} = I2C.open("i2c-1")
+    ref
+  end
+
   def read(ref, num_bytes) do
     IO.inspect(['read', num_bytes])
     I2C.read(ref, @i2c_addr, num_bytes)
@@ -59,17 +64,31 @@ defmodule Rabbit.GPS do
   end
 
   def get_all_bytes_available do
-    get_all_bytes_available(get_ref)
+    get_all_bytes_available(get_ref())
   end
 
   def get_all_packets_available do
-    # get_all_bytes_available |> :binary.split()
+    get_all_bytes_available
+      |> elem(1)
+      |> debug
+      |> Binary.split(<<0xB5, 0x62>>, global: true)
+      |> Enum.reject(fn el -> el == "" end)
+      |> Enum.map(fn binary ->
+        decoded = Packet.decode(<<0xB5, 0x62>> <> binary)
+        case decoded do
+          { :ok, packet } ->
+            { :ok, Packet.debug(packet) }
+          { :error, message } ->
+            { :error, message }
+        end
+      end)
+      |> debug
   end
 
   def get_all_bytes_available(ref) do
     result = write_read(ref, <<0xFD>>, 2)
 
-    debug([:result, result])
+    # debug([:result, result])
 
     case result do
       { :ok, <<bytes_to_read::16>> } ->
@@ -202,110 +221,13 @@ defmodule Rabbit.GPS do
     ]
 
     commands |> Enum.each(fn packet ->
-      I2C.write(ref, @i2c_addr, Packet.encode(packet))
+      # I2C.write(ref, @i2c_addr, Packet.encode(packet))
+      write(Packet.encode(packet))
 
       # Simulating a 38400baud pace (or less),
       # otherwise commands are not accepted by the device.
       :timer.sleep(5)
     end)
-  end
-
-  # def get_pvt do
-  #   get_pvt(get_ref)
-  # end
-
-  # def get_pvt(ref) do
-  #   <<
-  #     itow::little-integer-size(32),
-  #     year::little-integer-size(16),
-
-  #     month,
-  #     day,
-  #     hour,
-  #     min,
-  #     sec,
-
-  #     # valid,
-  #     _::4,
-  #     valid_mag::1,
-  #     valid_time::1,
-  #     fully_resolved::1,
-  #     valid_date::1,
-
-  #     _time_accuracy::integer-size(32),
-  #     _nanoseconds::signed-integer-size(32),
-
-  #     fix_type,
-
-  #     # Flags, one byte
-  #     _flags,
-  #     # carrier_phase_solution::2,
-  #     # head_vehicle_valid::1,
-  #     # power_save_mode::3,
-  #     # differential_corrections_applied::1,
-  #     # gnss_fix_ok::1,
-
-  #     _flags2,
-
-  #     # confirmed_available::1,
-  #     # confirmed_date::1,
-  #     # confirmed_time::1,
-
-  #     satellites_used,
-
-  #     # longitude::signed-integer-size(32),
-
-  #     # latitude::signed-integer-size(32),
-
-  #     x::binary
-  #   >> = payload
-
-  #   <<
-  #     crap::size(184),
-  #     longitude::little-signed-integer-size(32),
-  #     latitude::little-signed-integer-size(32),
-  #     h_accuracy::little-integer-size(32),
-  #     v_accuracy::little-integer-size(32),
-  #     _::binary
-  #   >> = payload
-
-  #   %{
-  #     itow: itow,
-  #     year: year,
-  #     month: month,
-  #     day: day,
-  #     hour: hour,
-  #     min: min,
-  #     sec: sec,
-  #     valid_mag: valid_mag,
-  #     valid_time: valid_time,
-  #     fully_resolved: fully_resolved,
-  #     valid_date: valid_date,
-  #     # time_accuracy: time_accuracy,
-  #     # nanoseconds: nanoseconds,
-  #     fix_type: fix_type,
-  #     # carrier_phase_solution: carrier_phase_solution,
-  #     # head_vehicle_valid: head_vehicle_valid,
-  #     # power_save_mode: power_save_mode,
-  #     # differential_corrections_applied: differential_corrections_applied,
-  #     # gnss_fix_ok: gnss_fix_ok,
-
-  #     # confirmed_available: confirmed_available,
-  #     # confirmed_date: confirmed_date,
-  #     # confirmed_time: confirmed_time,
-  #     satellites_used: satellites_used,
-
-  #     # 33, 117
-  #     longitude: longitude / :math.pow(10, 7),
-  #     latitude: latitude / :math.pow(10, 7),
-  #     h_accuracy: mm_to_foot(h_accuracy),
-  #     v_accuracy: mm_to_foot(v_accuracy)
-  #   }
-  # end
-
-  def get_ref() do
-    {:ok, ref} = I2C.open("i2c-1")
-    ref
   end
 
   # def foo() do
