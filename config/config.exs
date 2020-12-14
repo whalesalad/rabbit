@@ -17,28 +17,16 @@ config :nerves, :firmware,
 
 node_name = if Mix.env() != :prod, do: "rabbit"
 
-config :nerves_init_gadget,
-  mdns_domain: nil,
-  node_name: node_name,
-  node_host: :ip,
-  ifname: "wlan0",
-  # ifname: "eth0",
-  address_method: :dhcp
-
-# eth0: []
-config :nerves_network, :default,
-  wlan0: [
-    ssid: "whalesalad",
-    psk: "7yppahc7",
-    key_mgmt: :"WPA-PSK"
-  ]
-
 # Use shoehorn to start the main application. See the shoehorn
 # docs for separating out critical OTP applications such as those
 # involved with firmware updates.
 
 config :shoehorn,
-  init: [:nerves_runtime, :nerves_init_gadget],
+  init: [
+    :nerves_runtime,
+    :vintage_net,
+    :nerves_ssh
+  ],
   app: Mix.Project.config()[:app]
 
 # Use Ringlogger as the logger backend and remove :console.

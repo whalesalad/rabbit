@@ -3,7 +3,11 @@ defmodule Rabbit.MixProject do
 
   @app :rabbit
   @version "0.1.0"
-  @all_targets [:rpi4, :rpi4_rabbit, :x86_64]
+  @all_targets [
+    :rpi4,
+    :rpi4_rabbit,
+    :x86_64
+  ]
 
   def project do
     [
@@ -39,9 +43,9 @@ defmodule Rabbit.MixProject do
   defp deps do
     [
       # Dependencies for all targets
-      {:nerves, "~> 1.5.0", runtime: false},
-      {:shoehorn, "~> 0.6"},
-      {:ring_logger, "~> 0.6"},
+      {:nerves, "~> 1.7.1", runtime: false},
+      {:shoehorn, "~> 0.7"},
+      {:ring_logger, "~> 0.8"},
       {:toolshed, "~> 0.2"},
 
       #
@@ -50,8 +54,19 @@ defmodule Rabbit.MixProject do
       {:circuits_spi, "~> 0.1.4"},
 
       # Dependencies for all targets except :host
-      {:nerves_runtime, "~> 0.6", targets: @all_targets},
-      {:nerves_init_gadget, "~> 0.4", targets: @all_targets},
+      {:nerves_runtime, "~> 0.10", targets: @all_targets},
+      {:busybox, "~> 0.1", targets: @all_targets},
+      {:vintage_net, "~> 0.7.0", targets: @all_targets},
+      {:vintage_net_wifi, "~> 0.7.0", targets: @all_targets},
+      # {:vintage_net_ethernet, "~> 0.7.0", targets: @all_targets},
+      # {:vintage_net_direct, "~> 0.7.0", targets: @all_targets},
+      {:nerves_time, "~> 0.2", targets: @all_targets},
+      {:mdns_lite, "~> 0.4", targets: @all_targets},
+      {:nerves_ssh, "~> 0.1.0", targets: @all_targets},
+
+      {:binary, "~> 0.0.5"},
+
+      # {:nerves_init_gadget, "~> 0.4", targets: @all_targets},
 
       # Dependencies for specific targets
       # {:nerves_system_rpi, "~> 1.8", runtime: false, targets: :rpi},
@@ -61,10 +76,10 @@ defmodule Rabbit.MixProject do
       # {:nerves_system_rpi3a, "~> 1.8", runtime: false, targets: :rpi3a},
       # {:nerves_system_bbb, "~> 2.3", runtime: false, targets: :bbb},
 
-      {:nerves_system_rpi4, "~> 1.8", runtime: false, targets: :rpi4},
-      {:nerves_system_x86_64, "~> 1.8", runtime: false, targets: :x86_64},
+      # {:nerves_system_rpi4, "~> 1.8", runtime: false, targets: :rpi4},
+      # {:nerves_system_x86_64, "~> 1.13.3", runtime: false, targets: :x86_64},
 
-      {:rpi4_rabbit, path: "/home/michael/code/rpi4_rabbit", runtime: false, targets: :rpi4_rabbit},
+      {:rpi4_rabbit, path: "/Users/michael/Code/rpi4_rabbit", runtime: false, targets: :rpi4_rabbit},
     ]
   end
 

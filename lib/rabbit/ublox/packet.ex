@@ -11,7 +11,7 @@ defmodule Rabbit.Ublox.Packet do
   end
 
   # https://en.wikipedia.org/wiki/Fletcher%27s_checksum
-  def checksum_byte(byte, [a, b] = checksum) do
+  def checksum_byte(byte, [a, b] = _checksum) do
     a = ((a + byte) &&& 0xFF)
     b = ((b + a) &&& 0xFF)
     [a, b]
@@ -25,6 +25,43 @@ defmodule Rabbit.Ublox.Packet do
     |> :binary.list_to_bin
   end
 
+  def decode(raw, skip_checksum \\ false) do
+    <<
+      0xB5,
+      0x62,
+      msg_class,
+      msg_id,
+      payload_length::16-little,
+      rest::binary
+    >> = raw
+
+    <<
+      payload::binary-size(payload_length),
+      checksum::binary-size(2)
+    >> = rest
+
+    calculated = checksum_for(<<msg_class, msg_id, payload_length::16-little>> <> payload)
+
+    IO.inspect(%{
+      msg_class: msg_class,
+      msg_id: msg_id,
+      payload_length: payload_length,
+      checksum: checksum,
+      calculated: calculated,
+      payload: payload,
+    }, limit: :infinity)
+
+    if skip_checksum do
+      { :ok, p(msg_class, msg_id, payload) }
+    else
+      if calculated == checksum do
+        { :ok, p(msg_class, msg_id, payload) }
+      else
+        { :error, %{ message: "Checksums do not match" }}
+      end
+    end
+  end
+
   def encode(packet) do
     msg_class = classes(packet.class)
     msg_id = apply(Packet, packet.class, [packet.id])
@@ -33,15 +70,17 @@ defmodule Rabbit.Ublox.Packet do
 
     payload_length = byte_size(payload)
 
-    prefix = <<0xB5, 0x62>>
-
     # The body is the portion of the message that is checksummed.
-    body = <<msg_class, msg_id, payload_length::16-little>> <> :binary.list_to_bin(packet.payload)
+    body = <<
+      msg_class,
+      msg_id,
+      payload_length::16-little
+    >> <> payload
 
     checksum = checksum_for(body)
 
     # Finally, here is our entire message!
-    prefix <> body <> checksum
+    <<0xB5, 0x62>> <> body <> checksum
   end
 
   def classes() do
