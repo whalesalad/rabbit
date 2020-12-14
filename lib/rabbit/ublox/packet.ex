@@ -42,16 +42,18 @@ defmodule Rabbit.Ublox.Packet do
       checksum::binary-size(2)
     >> = rest
 
-    calculated = checksum_for(<<msg_class, msg_id, payload_length::16-little>> <> payload)
+    calculated = checksum_for(
+      <<msg_class, msg_id, payload_length::16-little>> <> payload
+    )
 
-    IO.inspect(%{
-      msg_class: msg_class,
-      msg_id: msg_id,
-      payload_length: payload_length,
-      checksum: checksum,
-      calculated: calculated,
-      payload: payload,
-    }, limit: :infinity)
+    # IO.inspect(%{
+    #   msg_class: msg_class,
+    #   msg_id: msg_id,
+    #   payload_length: payload_length,
+    #   checksum: checksum,
+    #   calculated: calculated,
+    #   payload: payload,
+    # }, limit: :infinity)
 
     if skip_checksum do
       { :ok, p(msg_class, msg_id, payload) }
@@ -244,11 +246,11 @@ defmodule Rabbit.Ublox.Packet do
     nav(String.to_atom(attribute))
   end
 
-  # nav-pvt
   def debug({:error, _} = data) do
     data
   end
 
+  # nav-pvt
   def debug(%Packet{class: 0x01, id: 0x07 } = packet) do
     <<
       itow::little-little-integer-size(32),
@@ -327,4 +329,9 @@ defmodule Rabbit.Ublox.Packet do
       ground_speed: Units.mm_to_foot(ground_speed),
     }
   end
+
+  def debug(%Packet{} = packet) do
+    packet
+  end
+
 end

@@ -49,9 +49,10 @@ defmodule Rabbit.MixProject do
       {:toolshed, "~> 0.2"},
 
       #
-      {:circuits_gpio, "~> 0.4.3"},
-      {:circuits_i2c, "~> 0.3.5"},
-      {:circuits_spi, "~> 0.1.4"},
+      # {:circuits_gpio, "~> 0.4.3"},
+      {:circuits_i2c, "~> 0.3.7"},
+      # {:circuits_spi, "~> 0.1.4"},
+      {:circuits_uart, "~> 1.4.2"},
 
       # Dependencies for all targets except :host
       {:nerves_runtime, "~> 0.10", targets: @all_targets},
@@ -65,6 +66,8 @@ defmodule Rabbit.MixProject do
       {:nerves_ssh, "~> 0.1.0", targets: @all_targets},
 
       {:binary, "~> 0.0.5"},
+      {:httpoison, "~> 1.7"},
+      {:poison, "~> 3.1"},
 
       # {:nerves_init_gadget, "~> 0.4", targets: @all_targets},
 

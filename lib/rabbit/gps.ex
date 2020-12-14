@@ -79,26 +79,31 @@ defmodule Rabbit.GPS do
           { :ok, packet } ->
             { :ok, Packet.debug(packet) }
           { :error, message } ->
-            { :error, message }
+            IO.inspect({ :error, message })
+            nil
         end
       end)
+      |> Enum.reject(&is_nil/1)
       |> debug
   end
 
   def get_all_bytes_available(ref) do
     result = write_read(ref, <<0xFD>>, 2)
 
-    # debug([:result, result])
-
     case result do
       { :ok, <<bytes_to_read::16>> } ->
-        debug({:bytes_to_read, bytes_to_read})
         read(bytes_to_read)
 
       { :error, message } ->
         { :error, message }
 
     end
+  end
+
+  def read_forever do
+    get_all_packets_available
+    :timer.sleep(200)
+    read_forever
   end
 
   def get_version do
