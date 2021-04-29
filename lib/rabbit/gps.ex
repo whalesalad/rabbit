@@ -64,16 +64,32 @@ defmodule Rabbit.GPS do
   end
 
   def get_all_bytes_available do
-    get_all_bytes_available(get_ref())
+    case get_all_bytes_available(get_ref()) do
+      {:ok, raw_bytes} ->
+        debug(['raw_bytes', :erlang.byte_size(raw_bytes)])
+
+        # |> :binary.bin_to_list()
+        # |> Enum.take_while(fn b -> b != 0xFF end)
+        # |> :binary.list_to_bin()
+        raw_bytes
+          |> Binary.trim_trailing(0xFF)
+        debug(['raw_bytes after clean?', :erlang.byte_size(raw_bytes)])
+        raw_bytes
+      {:error, error} ->
+        debug(['error', error])
+        []
+    end
   end
 
   def get_all_packets_available do
+    #
     get_all_bytes_available
-      |> elem(1)
-      |> debug
+      # |> debug
       |> Binary.split(<<0xB5, 0x62>>, global: true)
       |> Enum.reject(fn el -> el == "" end)
+      # |> debug
       |> Enum.map(fn binary ->
+        # debug(['binary?', binary])
         decoded = Packet.decode(<<0xB5, 0x62>> <> binary)
         case decoded do
           { :ok, packet } ->
@@ -127,7 +143,7 @@ defmodule Rabbit.GPS do
   end
 
   def get_port_configuration() do
-    { :ok, raw_response } = Packet.encode(Packet.p(:cfg, :prt, [])) |> send_packet
+    { :ok, raw_response } = Packet.encode(Packet.p(:cfg, :prt, [0])) |> send_packet
 
     debug(['response in get_port_configuration', raw_response])
 
@@ -163,12 +179,8 @@ defmodule Rabbit.GPS do
     }
   end
 
-  def configure() do
-    get_ref |> configure
-  end
-
-  def configure(ref) do
-    commands = [
+  def build_commands() do
+    [
       # GxGGA off
       Packet.p(:cfg, :msg, [0xF0,0x00,0x00,0x00,0x00,0x00,0x00,0x01]),
 
@@ -187,8 +199,14 @@ defmodule Rabbit.GPS do
       # GxVTG off
       Packet.p(:cfg, :msg, [0xF0,0x05,0x00,0x00,0x00,0x00,0x00,0x01]),
 
-      # NAV-PVT ON
-      Packet.p(:cfg, :msg, [0x01,0x07,0x01]),
+      # NAV-PVT OFF
+      Packet.p(:cfg, :msg, [0x01,0x07,0x00]),
+
+      # Rate 10Hz
+      Packet.p(:cfg, :rate, [0x64,0x00,0x01,0x00,0x01,0x00])
+
+      # NAV-POSLLH ON
+      # Packet.p(:cfg, :msg, [0x01,0x02,0x00,0x01,0x00,0x00,0x00,0x00]),
 
       # Disable Unnecessary Channels?
       # Packet.p(:cfg, :gnss, [
@@ -217,14 +235,18 @@ defmodule Rabbit.GPS do
       #   0x06, 0x08, 0xFF, 0x00,
       #   0x00, 0x00, 0x00, 0x00
       # ]),
-
-      # NAV-POSLLH ON
-      # Packet.p(:cfg, :msg, [0x01,0x02,0x00,0x01,0x00,0x00,0x00,0x00]),
-
-      # Rate 10Hz
-      Packet.p(:cfg, :rate, [0x64,0x00,0x01,0x00,0x01,0x00])
     ]
+  end
 
+  def configure() do
+    configure(build_commands)
+  end
+
+  def configure(commands) do
+    get_ref |> configure(commands)
+  end
+
+  def configure(ref, commands) do
     commands |> Enum.each(fn packet ->
       # I2C.write(ref, @i2c_addr, Packet.encode(packet))
       write(Packet.encode(packet))
@@ -233,6 +255,13 @@ defmodule Rabbit.GPS do
       # otherwise commands are not accepted by the device.
       :timer.sleep(5)
     end)
+  end
+
+  def start_nav_pvt() do
+    configure([
+      Packet.p(:cfg, :msg, [0x01,0x07,0x01]),
+      # Packet.p(:cfg, :msg, [0x01,0x02,0x00,0x01,0x00,0x00,0x00,0x00]),
+    ])
   end
 
   # def foo() do
