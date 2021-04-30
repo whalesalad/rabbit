@@ -1,5 +1,14 @@
 # Rabbit
 
+i2c addresses:
+
+Devices on I2C bus "i2c-1":
+
+* `61, 0x3D` (OLED)
+* `66, 0x42` (GPS)
+* `105, 0x69` (Gyro)
+
+
 **TODO: Add description**
 
 ## Targets

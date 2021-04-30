@@ -57,8 +57,13 @@ defmodule Rabbit.GPS do
       # IO.inspect(limit: :infinity, binaries: :as_binaries)
   end
 
+  def debug(data, key) do
+    debug([key, data])
+    data
+  end
+
   def send_packet(packet) do
-    write(packet) |> debug
+    write(packet) |> debug('send_packet write response')
 
     get_all_bytes_available
   end
@@ -66,32 +71,37 @@ defmodule Rabbit.GPS do
   def get_all_bytes_available do
     case get_all_bytes_available(get_ref()) do
       {:ok, raw_bytes} ->
-        debug(['raw_bytes', :erlang.byte_size(raw_bytes)])
-
-        # |> :binary.bin_to_list()
-        # |> Enum.take_while(fn b -> b != 0xFF end)
-        # |> :binary.list_to_bin()
         raw_bytes
           |> Binary.trim_trailing(0xFF)
-        debug(['raw_bytes after clean?', :erlang.byte_size(raw_bytes)])
-        raw_bytes
+          |> debug('raw_bytes')
       {:error, error} ->
         debug(['error', error])
         []
     end
   end
 
+  def handle_byte_stream(<<data::binary>>) do
+    Binary.split(data, <<0xB5, 0x62>>, global: true)
+      |> debug('handle_byte_stream binary')
+  end
+
+  def handle_byte_stream(_) do
+    []
+  end
+
+  def reject_blank(coll) do
+    Enum.reject(coll, fn el -> el == "" end)
+  end
+
   def get_all_packets_available do
-    #
     get_all_bytes_available
-      # |> debug
-      |> Binary.split(<<0xB5, 0x62>>, global: true)
-      |> Enum.reject(fn el -> el == "" end)
-      # |> debug
+      |> debug('start get_all_bytes_available')
+      |> handle_byte_stream()
+      |> debug('handle byte stream')
+      |> reject_blank()
+      |> debug('reject blank')
       |> Enum.map(fn binary ->
-        # debug(['binary?', binary])
-        decoded = Packet.decode(<<0xB5, 0x62>> <> binary)
-        case decoded do
+        case Packet.decode(<<0xB5, 0x62>> <> binary) do
           { :ok, packet } ->
             { :ok, Packet.debug(packet) }
           { :error, message } ->
@@ -100,7 +110,7 @@ defmodule Rabbit.GPS do
         end
       end)
       |> Enum.reject(&is_nil/1)
-      |> debug
+      |> debug('end get_all_packets_available')
   end
 
   def get_all_bytes_available(ref) do
@@ -126,20 +136,31 @@ defmodule Rabbit.GPS do
     get_version(get_ref)
   end
 
-  def vp do
-    Packet.encode(Packet.p(:mon, :ver, []))
-  end
-
   def get_version(ref) do
-    { :ok, raw_response } = Packet.encode(Packet.p(:mon, :ver, [])) |> send_packet
+    # stop_nav_pvt()
 
-    debug(['response in get_version?', raw_response])
+    # :timer.sleep(5)
+
+    raw_response =
+      Packet.p(:mon, :ver, [])
+      |> Packet.encode()
+      |> send_packet()
+
+    # :timer.sleep(5)
+    # start_nav_pvt()
 
     { :ok, response } = Packet.decode(raw_response, true)
 
-    response.payload
+    <<sw_version::binary-size(30), hw_version::binary-size(10), raw_extension::binary>> = response.payload
+
+    extension = raw_extension
       |> String.split(<<0>>, trim: true)
-      |> debug
+
+    debug(%{
+      sw_version: sw_version |> Binary.trim_trailing(0),
+      hw_version: hw_version |> Binary.trim_trailing(0),
+      extension: extension
+    })
   end
 
   def get_port_configuration() do
@@ -238,6 +259,10 @@ defmodule Rabbit.GPS do
     ]
   end
 
+  def get_configuration() do
+    get_ref |> write_read(Packet.encode)
+  end
+
   def configure() do
     configure(build_commands)
   end
@@ -258,10 +283,11 @@ defmodule Rabbit.GPS do
   end
 
   def start_nav_pvt() do
-    configure([
-      Packet.p(:cfg, :msg, [0x01,0x07,0x01]),
-      # Packet.p(:cfg, :msg, [0x01,0x02,0x00,0x01,0x00,0x00,0x00,0x00]),
-    ])
+    configure([Packet.p(:cfg, :msg, [0x01,0x07,0x01])])
+  end
+
+  def stop_nav_pvt() do
+    configure([Packet.p(:cfg, :msg, [0x01,0x07,0x00])])
   end
 
   # def foo() do
