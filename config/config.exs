@@ -36,6 +36,14 @@ config :shoehorn,
 config :logger,
   backends: [RingLogger]
 
+config :rabbit, Rabbit.Display,
+  device: "i2c-1",
+  driver: :ssd1306,
+  type: :i2c,
+  width: 64,
+  height: 48,
+  address: 0x3D
+
 if Mix.target() != :host do
   import_config "target.exs"
 end

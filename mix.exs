@@ -43,7 +43,7 @@ defmodule Rabbit.MixProject do
   defp deps do
     [
       # Dependencies for all targets
-      {:nerves, "~> 1.7.1", runtime: false},
+      {:nerves, "~> 1.7.5", runtime: false},
       {:shoehorn, "~> 0.7"},
       {:ring_logger, "~> 0.8"},
       {:toolshed, "~> 0.2"},
@@ -68,6 +68,12 @@ defmodule Rabbit.MixProject do
       {:binary, "~> 0.0.5"},
       {:httpoison, "~> 1.7"},
       {:poison, "~> 3.1"},
+
+      # display
+      {:oled, "~> 0.3.4"},
+      {:chisel, "~> 0.2.0"},
+
+      #
 
       # {:nerves_init_gadget, "~> 0.4", targets: @all_targets},
 

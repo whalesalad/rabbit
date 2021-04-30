@@ -82,7 +82,6 @@ defmodule Rabbit.GPS do
 
   def handle_byte_stream(<<data::binary>>) do
     Binary.split(data, <<0xB5, 0x62>>, global: true)
-      |> debug('handle_byte_stream binary')
   end
 
   def handle_byte_stream(_) do
@@ -149,7 +148,7 @@ defmodule Rabbit.GPS do
     # :timer.sleep(5)
     # start_nav_pvt()
 
-    { :ok, response } = Packet.decode(raw_response, true)
+    { :ok, response } = Packet.decode(raw_response)
 
     <<sw_version::binary-size(30), hw_version::binary-size(10), raw_extension::binary>> = response.payload
 
@@ -168,7 +167,7 @@ defmodule Rabbit.GPS do
 
     debug(['response in get_port_configuration', raw_response])
 
-    { :ok, response } = Packet.decode(raw_response, true)
+    { :ok, response } = Packet.decode(raw_response)
 
     <<
       port_id,

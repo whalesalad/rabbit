@@ -27,15 +27,14 @@ defmodule Rabbit.Ublox.Packet do
     |> :binary.list_to_bin
   end
 
-  def decode(raw, skip_checksum \\ false) do
-    <<
+  def decode(<<
       0xB5,
       0x62,
       msg_class,
       msg_id,
       payload_length::16-little,
       rest::binary
-    >> = raw
+    >>) do
 
     <<
       payload::binary-size(payload_length),
@@ -55,15 +54,18 @@ defmodule Rabbit.Ublox.Packet do
     #   payload: payload,
     # }, limit: :infinity)
 
-    if skip_checksum do
+    if calculated == checksum do
       { :ok, p(msg_class, msg_id, payload) }
     else
-      if calculated == checksum do
-        { :ok, p(msg_class, msg_id, payload) }
-      else
-        { :error, %{ message: "Checksums do not match" }}
-      end
+      { :error, %{ message: "Checksums do not match" }}
     end
+  end
+
+  def decode(data) do
+    {:error, %{
+      message: "Could not decode data.",
+      data: data
+    }}
   end
 
   def encode(packet) do
@@ -92,7 +94,7 @@ defmodule Rabbit.Ublox.Packet do
       nav: 0x01,  # Navigation Results Messages: Position, Speed, Time, Acceleration, Heading, DOP, SVs used
       rxm: 0x02,  # Receiver Manager Messages: Satellite Status, RTC Status
       inf: 0x04,  # Information Messages: Printf-Style Messages, with IDs such as Error, Warning, Notice
-      ack: 0x05,  # Ack/Nak Messages: Acknowledge or Reject messages to UBX-CFG input messages
+      ack: 0x05,  # Ack/Nak Messages: Acknowledge or Reject messages to UBX-CFG input Messages
       cfg: 0x06,  # Configuration Input Messages: Set Dynamic Model, Set DOP Mask, Set Baud Rate, etc.
       upd: 0x09,  # Firmware Update Messages: Memory/Flash erase/write, Reboot, Flash identification, etc.
       mon: 0x0A,  # Monitoring Messages: Communication Status, CPU Load, Stack Usage, Task Status

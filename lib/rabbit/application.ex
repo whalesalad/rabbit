@@ -33,6 +33,7 @@ defmodule Rabbit.Application do
       # Children for all targets except host
       # Starts a worker by calling: Rabbit.Worker.start_link(arg)
       # {Rabbit.Worker, arg},
+      Rabbit.Display
     ]
   end
 
