@@ -68,18 +68,6 @@ defmodule Rabbit.GPS do
     get_all_bytes_available
   end
 
-  def get_all_bytes_available do
-    case get_all_bytes_available(get_ref()) do
-      {:ok, raw_bytes} ->
-        raw_bytes
-          |> Binary.trim_trailing(0xFF)
-          |> debug('raw_bytes')
-      {:error, error} ->
-        debug(['error', error])
-        []
-    end
-  end
-
   def handle_byte_stream(<<data::binary>>) do
     Binary.split(data, <<0xB5, 0x62>>, global: true)
   end
@@ -92,42 +80,45 @@ defmodule Rabbit.GPS do
     Enum.reject(coll, fn el -> el == "" end)
   end
 
+  def convert_to_packets(raw_packets) do
+    Enum.map(raw_packets, fn binary ->
+      case Packet.decode(<<0xB5, 0x62>> <> binary) do
+        { :ok, packet } ->
+          { :ok, Packet.debug(packet) }
+        { :error, details } ->
+          IO.inspect({ :error, details })
+          nil
+      end
+    end)
+  end
+
   def get_all_packets_available do
     get_all_bytes_available
-      |> debug('start get_all_bytes_available')
       |> handle_byte_stream()
-      |> debug('handle byte stream')
       |> reject_blank()
-      |> debug('reject blank')
-      |> Enum.map(fn binary ->
-        case Packet.decode(<<0xB5, 0x62>> <> binary) do
-          { :ok, packet } ->
-            { :ok, Packet.debug(packet) }
-          { :error, message } ->
-            IO.inspect({ :error, message })
-            nil
-        end
-      end)
+      |> convert_to_packets()
       |> Enum.reject(&is_nil/1)
-      |> debug('end get_all_packets_available')
+  end
+
+  def get_all_bytes_available do
+    get_all_bytes_available(get_ref())
   end
 
   def get_all_bytes_available(ref) do
-    result = write_read(ref, <<0xFD>>, 2)
-
-    case result do
-      { :ok, <<bytes_to_read::16>> } ->
-        read(bytes_to_read)
-
-      { :error, message } ->
-        { :error, message }
-
+    case read(400) do
+      {:ok, raw_bytes} ->
+        raw_bytes
+          |> Binary.trim_leading(0xFF)
+          |> Binary.trim_trailing(0xFF)
+          |> debug('raw_bytes')
+      {:error, error} ->
+        []
     end
   end
 
   def read_forever do
     get_all_packets_available
-    :timer.sleep(200)
+    :timer.sleep(1000)
     read_forever
   end
 
@@ -136,7 +127,7 @@ defmodule Rabbit.GPS do
   end
 
   def get_version(ref) do
-    # stop_nav_pvt()
+    stop_nav_pvt()
 
     # :timer.sleep(5)
 

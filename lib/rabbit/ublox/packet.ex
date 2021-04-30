@@ -27,6 +27,8 @@ defmodule Rabbit.Ublox.Packet do
     |> :binary.list_to_bin
   end
 
+  def decode(raw_data, skip_checksum \\ false)
+
   def decode(<<
       0xB5,
       0x62,
@@ -34,37 +36,40 @@ defmodule Rabbit.Ublox.Packet do
       msg_id,
       payload_length::16-little,
       rest::binary
-    >>) do
+    >> = raw_data, skip_checksum) do
 
-    <<
-      payload::binary-size(payload_length),
-      checksum::binary-size(2)
-    >> = rest
+    IO.inspect(['raw_data', raw_data])
 
-    calculated = checksum_for(
-      <<msg_class, msg_id, payload_length::16-little>> <> payload
-    )
+    try do
+      <<
+        payload::binary-size(payload_length),
+        checksum::binary-size(2)
+      >> = rest
 
-    # IO.inspect(%{
-    #   msg_class: msg_class,
-    #   msg_id: msg_id,
-    #   payload_length: payload_length,
-    #   checksum: checksum,
-    #   calculated: calculated,
-    #   payload: payload,
-    # }, limit: :infinity)
+      calculated = checksum_for(
+        <<msg_class, msg_id, payload_length::16-little>> <> payload
+      )
 
-    if calculated == checksum do
-      { :ok, p(msg_class, msg_id, payload) }
-    else
-      { :error, %{ message: "Checksums do not match" }}
+      if calculated == checksum do
+        { :ok, p(msg_class, msg_id, payload) }
+      else
+        { :error, %{
+          message: "Checksums do not match",
+          full: <<msg_class, msg_id, payload_length::16-little>> <> payload,
+          checksum: checksum,
+          calculated_checksum: calculated
+        }}
+      end
+    rescue
+      MatchError -> { :error, %{ message: "???" }}
     end
+
   end
 
-  def decode(data) do
+  def decode(raw_data, _skip_checksum) do
     {:error, %{
       message: "Could not decode data.",
-      data: data
+      raw_data: raw_data
     }}
   end
 
